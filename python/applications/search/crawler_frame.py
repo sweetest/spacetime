@@ -6,6 +6,7 @@ from lxml import html,etree
 import re, os
 from time import time
 from io import StringIO
+import editdistance
 
 try:
     # For python 2
@@ -20,7 +21,7 @@ LOG_HEADER = "[CRAWLER]"
 url_count = 0 if not os.path.exists("successful_urls.txt") else (len(open("successful_urls.txt").readlines()) - 1)
 if url_count < 0:
     url_count = 0
-MAX_LINKS_TO_DOWNLOAD = 100
+MAX_LINKS_TO_DOWNLOAD = 500
 
 @Producer(ProducedLink)
 @GetterSetter(OneUnProcessedGroup)
@@ -81,17 +82,17 @@ def extract_next_links(rawDatas):
     outputLinks = list()
     for i, (url, text) in enumerate(rawDatas):
         try:
-            print(url)
             tree = html.fromstring(text)
             urls = tree.xpath('//a/@href')
             parsed_url = urlparse(url)
             root = '{uri.scheme}://{uri.netloc}'.format(uri=parsed_url)
             for j, hrefUrl in enumerate(urls):
                 newUrl = urljoin(root, hrefUrl)
-                if is_valid(newUrl) :
+                val = editdistance.eval(newUrl, url)
+                if is_valid(newUrl) and editdistance.eval(newUrl, url) >= 2:
                     outputLinks.append(newUrl)
-        except:
-            pass
+        except etree.XMLSyntaxError:
+            print("malformed html")
     '''
     rawDatas is a list of tuples -> [(url1, raw_content1), (url2, raw_content2), ....]
     the return of this function should be a list of urls in their absolute form
@@ -101,7 +102,7 @@ def extract_next_links(rawDatas):
 
     Suggested library: lxml
     '''
-    print(len(outputLinks))
+    print("pushing back "+str(len(outputLinks))+"urls")
     return outputLinks
 
 def is_valid(url):
