@@ -5,10 +5,11 @@ from spacetime_local.declarations import Producer, GetterSetter, Getter
 from lxml import html,etree
 import re, os
 from time import time
+from io import StringIO
 
 try:
     # For python 2
-    from urlparse import urlparse, parse_qs
+    from urlparse import urlparse, parse_qs, urljoin
 except ImportError:
     # For python 3
     from urllib.parse import urlparse, parse_qs
@@ -19,7 +20,7 @@ LOG_HEADER = "[CRAWLER]"
 url_count = 0 if not os.path.exists("successful_urls.txt") else (len(open("successful_urls.txt").readlines()) - 1)
 if url_count < 0:
     url_count = 0
-MAX_LINKS_TO_DOWNLOAD = 20
+MAX_LINKS_TO_DOWNLOAD = 100
 
 @Producer(ProducedLink)
 @GetterSetter(OneUnProcessedGroup)
@@ -28,10 +29,10 @@ class CrawlerFrame(IApplication):
     def __init__(self, frame):
         self.starttime = time()
         # Set app_id <student_id1>_<student_id2>...
-        self.app_id = ""
+        self.app_id = "47164461_35728759"
         # Set user agent string to IR W17 UnderGrad <student_id1>, <student_id2> ...
         # If Graduate studetn, change the UnderGrad part to Grad.
-        self.UserAgentString = None
+        self.UserAgentString = "IR W17 Grad 47164461 35728759"
 		
         self.frame = frame
         assert(self.UserAgentString != None)
@@ -46,6 +47,7 @@ class CrawlerFrame(IApplication):
         self.frame.add(l)
 
     def update(self):
+        print(len(self.frame.get(OneUnProcessedGroup)))
         for g in self.frame.get(OneUnProcessedGroup):
             print "Got a Group"
             outputLinks = process_url_group(g, self.UserAgentString)
@@ -77,6 +79,19 @@ STUB FUNCTIONS TO BE FILLED OUT BY THE STUDENT.
 '''
 def extract_next_links(rawDatas):
     outputLinks = list()
+    for i, (url, text) in enumerate(rawDatas):
+        try:
+            print(url)
+            tree = html.fromstring(text)
+            urls = tree.xpath('//a/@href')
+            parsed_url = urlparse(url)
+            root = '{uri.scheme}://{uri.netloc}'.format(uri=parsed_url)
+            for j, hrefUrl in enumerate(urls):
+                newUrl = urljoin(root, hrefUrl)
+                if is_valid(newUrl) :
+                    outputLinks.append(newUrl)
+        except:
+            pass
     '''
     rawDatas is a list of tuples -> [(url1, raw_content1), (url2, raw_content2), ....]
     the return of this function should be a list of urls in their absolute form
@@ -86,6 +101,7 @@ def extract_next_links(rawDatas):
 
     Suggested library: lxml
     '''
+    print(len(outputLinks))
     return outputLinks
 
 def is_valid(url):
